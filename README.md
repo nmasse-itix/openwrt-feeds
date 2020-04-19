@@ -8,7 +8,7 @@
 
 ```sh
 cat >> feeds.conf.default <<EOF
-src-git custom git@github.com:nmasse-itix/openwrt-feeds.git
+src-git custom https://github.com/nmasse-itix/openwrt-feeds.git
 EOF
 ./scripts/feeds update -a
 ./scripts/feeds install nginx-tls
