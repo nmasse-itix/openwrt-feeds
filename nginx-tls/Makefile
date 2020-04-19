@@ -71,7 +71,7 @@ define Package/nginx-tls
   SUBMENU:=Web Servers/Proxies
   TITLE:=Nginx web server
   URL:=http://nginx.org/
-  DEPENDS:=+NGINX_PCRE:libpcre +(NGINX_SSL||NGINX_HTTP_CACHE||NGINX_HTTP_AUTH_BASIC):libopenssl +NGINX_HTTP_GZIP:zlib +NGINX_LUA:liblua +libpthread
+  DEPENDS:=+NGINX_PCRE:libpcre +(NGINX_SSL||NGINX_HTTP_CACHE||NGINX_HTTP_AUTH_BASIC):libopenssl +NGINX_HTTP_GZIP:zlib +NGINX_LUA:liblua +libpthread +NGINX_STREAM:libatomicops
   MENU:=1
 endef
 
@@ -211,6 +211,7 @@ ifeq ($(CONFIG_NGINX_HTTP_SECURE_LINK),y)
 endif
 ifeq ($(CONFIG_NGINX_STREAM),y)
   ADDITIONAL_MODULES += --with-stream
+  ADDITIONAL_MODULES += --with-libatomic
 ifeq ($(CONFIG_NGINX_SSL),y)
   ADDITIONAL_MODULES += --with-stream_ssl_module
   ADDITIONAL_MODULES += --with-stream_ssl_preread_module
