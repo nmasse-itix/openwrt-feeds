@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=nginx-tls
 PKG_VERSION:=1.12.2
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE:=nginx-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://nginx.org/download/
@@ -61,7 +61,9 @@ PKG_CONFIG_DEPENDS := \
 	CONFIG_NGINX_LUA \
 	CONFIG_NGINX_HTTP_REAL_IP \
 	CONFIG_NGINX_HTTP_SECURE_LINK \
-	CONFIG_NGINX_STREAM
+	CONFIG_NGINX_STREAM \
+	CONFIG_NGINX_HTTP_UPSTREAM_STICKY \
+	CONFIG_NGINX_HTTP_UPSTREAM_HEALTHCHECK
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -71,7 +73,8 @@ define Package/nginx-tls
   SUBMENU:=Web Servers/Proxies
   TITLE:=Nginx web server
   URL:=http://nginx.org/
-  DEPENDS:=+NGINX_PCRE:libpcre +(NGINX_SSL||NGINX_HTTP_CACHE||NGINX_HTTP_AUTH_BASIC):libopenssl +NGINX_HTTP_GZIP:zlib +NGINX_LUA:liblua +libpthread +NGINX_STREAM:libatomicops
+  DEPENDS:=+NGINX_PCRE:libpcre +(NGINX_SSL||NGINX_HTTP_CACHE||NGINX_HTTP_AUTH_BASIC):libopenssl +NGINX_HTTP_GZIP:zlib +NGINX_LUA:liblua +libpthread
+  PKG_BUILD_DEPENDS:=+NGINX_STREAM:libatomicops
   MENU:=1
 endef
 
@@ -200,6 +203,9 @@ endif
 ifneq ($(CONFIG_NGINX_HTTP_UPSTREAM_KEEPALIVE),y)
   ADDITIONAL_MODULES += --without-http_upstream_keepalive_module
 endif
+ifneq ($(CONFIG_NGINX_HTTP_UPSTREAM_ZONE),y)
+  ADDITIONAL_MODULES += --without-http_upstream_zone_module
+endif
 ifeq ($(CONFIG_NGINX_HTTP_V2),y)
   ADDITIONAL_MODULES += --with-http_v2_module
 endif
@@ -216,6 +222,13 @@ ifeq ($(CONFIG_NGINX_SSL),y)
   ADDITIONAL_MODULES += --with-stream_ssl_module
   ADDITIONAL_MODULES += --with-stream_ssl_preread_module
 endif
+endif
+ifeq ($(CONFIG_NGINX_HTTP_UPSTREAM_STICKY),y)
+  ADDITIONAL_MODULES += --add-module=$(PKG_BUILD_DIR)/nginx-sticky/
+endif
+ifeq ($(CONFIG_NGINX_HTTP_UPSTREAM_HEALTHCHECK),y)
+  ADDITIONAL_MODULES += --add-module=$(PKG_BUILD_DIR)/nginx-upstream-check/
+  TARGET_CFLAGS += -DNGX_HTTP_UPSTREAM_CHECK
 endif
 
 TARGET_CFLAGS += -fvisibility=hidden -ffunction-sections -fdata-sections -DNGX_LUA_NO_BY_LUA_BLOCK
@@ -239,7 +252,6 @@ define Build/Configure
 			--with-cc="$(TARGET_CC)" \
 			--with-cc-opt="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS)" \
 			--with-ld-opt="$(TARGET_LDFLAGS)" \
-			--without-http_upstream_zone_module \
 	)
 endef
 
@@ -261,8 +273,38 @@ endef
 
 define Build/Prepare
 	$(call Build/Prepare/Default)
+	$(if $(CONFIG_NGINX_HTTP_UPSTREAM_STICKY),$(call Prepare/nginx-sticky))
+	$(if $(CONFIG_NGINX_HTTP_UPSTREAM_HEALTHCHECK),$(call Prepare/nginx-upstream-check))
 	$(if $(CONFIG_NGINX_NAXSI),$(call Prepare/nginx-naxsi))
 	$(if $(CONFIG_NGINX_LUA),$(call Prepare/lua-nginx))
+endef
+
+define Download/nginx-upstream-check
+	VERSION:=v0.3.0
+	SUBDIR:=nginx-upstream-check
+	FILE:=nginx-upstream-check-module-$(PKG_VERSION)-$$(VERSION).tar.gz
+	URL:=https://github.com/yaoweibin/nginx_upstream_check_module.git
+	PROTO:=git
+endef
+
+define  Prepare/nginx-upstream-check
+	$(eval $(call Download,nginx-upstream-check))
+	gzip -dc $(DL_DIR)/$(FILE) | tar -C $(PKG_BUILD_DIR) $(TAR_OPTIONS)
+	$(call PatchDir,$(PKG_BUILD_DIR),./patches-upstream-check)
+endef
+
+define Download/nginx-sticky
+	VERSION:=1.2.6
+	SUBDIR:=nginx-sticky
+	FILE:=nginx-sticky-module-$(PKG_VERSION)-$$(VERSION).tar.gz
+	URL:=https://bitbucket.org/nginx-goodies/nginx-sticky-module-ng.git
+	PROTO:=git
+endef
+
+define  Prepare/nginx-sticky
+	$(eval $(call Download,nginx-sticky))
+	gzip -dc $(DL_DIR)/$(FILE) | tar -C $(PKG_BUILD_DIR) $(TAR_OPTIONS)
+	$(call PatchDir,$(PKG_BUILD_DIR),./patches-sticky)
 endef
 
 define Download/nginx-naxsi

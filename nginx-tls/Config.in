@@ -154,6 +154,21 @@ config NGINX_HTTP_BROWSER
 	prompt "Enable HTTP browser module"
 	default y
 
+config NGINX_HTTP_UPSTREAM_ZONE
+	bool
+	prompt "Enable zone directive in the upstream block"
+	default y
+
+config NGINX_HTTP_UPSTREAM_STICKY
+	bool
+	prompt "Enable HTTP sticky session"
+	default y
+
+config NGINX_HTTP_UPSTREAM_HEALTHCHECK
+	bool
+	prompt "Enable HTTP health check"
+	default y
+
 config NGINX_HTTP_UPSTREAM_HASH
 	bool
 	prompt "Enable HTTP hash module"
@@ -202,7 +217,7 @@ config NGINX_LUA
 config NGINX_HTTP_REAL_IP
 	bool
 	prompt "Enable HTTP real ip module"
-	default n
+	default y
 
 config NGINX_HTTP_SECURE_LINK
 	bool
